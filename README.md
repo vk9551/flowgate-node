@@ -476,8 +476,10 @@ make clean      # remove dist/ and dashboard/dist/
 
 | Implementation | Repo | Language |
 |---------------|------|----------|
-| flowgate-go   | github.com/vk9551/flowgate-go   | Go |
-| flowgate-node | github.com/vk9551/flowgate-node | TypeScript / Node.js |
+| flowgate-go     | github.com/vk9551/flowgate-go     | Go                   |
+| flowgate-node   | github.com/vk9551/flowgate-node   | TypeScript / Node.js |
+| flowgate-python | github.com/vk9551/flowgate-python | Python               |
+| flowgate-java   | github.com/vk9551/flowgate-java   | Java                 |
 
 The YAML policy format, API contract, and decision logic are identical across implementations. `flowgate.yaml` files are interchangeable.
 
