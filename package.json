@@ -1,0 +1,33 @@
+{
+  "name": "flowgate-node",
+  "version": "0.1.0",
+  "description": "FlowGate — self-hosted traffic governance engine (TypeScript/Node port)",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "build:dashboard": "cd dashboard && npm install && npm run build",
+    "dev": "tsx src/main.ts",
+    "dev:dashboard": "cd dashboard && npm install --prefer-offline && vite",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist/ dashboard/dist/"
+  },
+  "dependencies": {
+    "@fastify/static": "^7.0.4",
+    "better-sqlite3": "^12.8.0",
+    "chokidar": "^3.6.0",
+    "fastify": "^4.28.1",
+    "js-yaml": "^4.1.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/js-yaml": "^4.0.9",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.14.0",
+    "concurrently": "^8.2.2",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}

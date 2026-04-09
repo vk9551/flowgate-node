@@ -1,0 +1,212 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# FlowGate example configurations
+#
+# Three ready-to-use starting points. Copy the one closest to your use case
+# to flowgate.yaml and adjust as needed.
+#
+# Environment variables are expanded: ${VAR} is replaced at load time.
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 1 — Per-subject action throttling
+#
+# Use this when subjects (users, devices, tenants) trigger actions at varying
+# urgency levels and you need to enforce per-subject rate limits with an
+# active-window constraint. Critical actions always pass through. Lower-priority
+# ones are capped, delayed to the subject's active hours, and batched when
+# suppressed.
+# ══════════════════════════════════════════════════════════════════════════════
+
+version: "1.0"
+
+subject:
+  id_field: "user_id"          # which field in the event identifies the subject
+  timezone_field: "user_tz"    # IANA tz ("America/New_York") for active-window math
+  waking_hours:
+    start: "07:00"
+    end:   "22:00"
+
+priorities:
+  # Critical: time-sensitive, must act immediately regardless of caps or hours.
+  - name: critical
+    match:
+      - field: "urgency"
+        equals: "critical"
+    bypass_all: true            # skips all caps and active-window checks
+
+  # Standard: act during active hours, capped per day.
+  - name: standard
+    match:
+      - field: "urgency"
+        in: ["high", "normal"]
+
+  # Bulk: low-urgency, heavy throttle, batch suppressed events into a digest.
+  - name: bulk
+    match:
+      - field: "urgency"
+        equals: "low"
+    default: true               # catches anything that doesn't match above
+
+policies:
+  - priority: critical
+    decision: act_now
+
+  - priority: standard
+    window:
+      respect_waking_hours: true
+      max_delay: 12h
+    caps:
+      - scope: subject
+        period: 1d
+        limit: 10
+    decision_on_cap_breach: suppress
+
+  - priority: bulk
+    window:
+      respect_waking_hours: true
+      max_delay: 48h
+    caps:
+      - scope: subject
+        period: 1d
+        limit: 2
+    decision_on_cap_breach: suppress
+
+storage:
+  backend: sqlite
+  dsn:     /data/flowgate.db
+
+server:
+  port: 7700
+  auth:
+    type:   jwt
+    secret: "${FLOWGATE_SECRET}"
+  dashboard:
+    enabled: true
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 2 — Outbound rate shaping
+#
+# Use this when FlowGate governs outbound calls to downstream systems that
+# have their own rate limits. Subjects are callers (clients, services, tenants).
+# No active-window constraint — caps are purely time-bucket based.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# version: "1.0"
+#
+# subject:
+#   id_field: "client_id"        # identifies the calling client or tenant
+#
+# priorities:
+#   - name: realtime
+#     match:
+#       - field: "urgency"
+#         equals: "realtime"
+#     bypass_all: true
+#
+#   - name: standard
+#     match:
+#       - field: "urgency"
+#         in: ["high", "normal"]
+#
+#   - name: batch
+#     match:
+#       - field: "urgency"
+#         equals: "low"
+#     default: true
+#
+# policies:
+#   - priority: realtime
+#     decision: act_now
+#
+#   - priority: standard
+#     caps:
+#       - scope: subject
+#         period: 1m
+#         limit: 30              # 30 actions/min per client
+#       - scope: subject
+#         period: 1h
+#         limit: 500
+#     decision_on_cap_breach: delay
+#     window:
+#       max_delay: 10m
+#
+#   - priority: batch
+#     caps:
+#       - scope: subject
+#         period: 1h
+#         limit: 100
+#       - scope: subject
+#         period: 1d
+#         limit: 1000
+#     decision_on_cap_breach: suppress
+#
+# callbacks:
+#   send_now:
+#     url:    "${DOWNSTREAM_URL}"
+#     method: POST
+#
+# storage:
+#   backend: sqlite
+#   dsn:     /data/flowgate.db
+#
+# server:
+#   port: 7700
+#   auth:
+#     type:   jwt
+#     secret: "${FLOWGATE_SECRET}"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 3 — Duplicate suppression
+#
+# Use this when upstream systems fire the same event multiple times.
+# FlowGate suppresses repeats from the same source within a rolling window,
+# letting only the first through.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# version: "1.0"
+#
+# subject:
+#   id_field: "source_id"        # stable identifier for the event source
+#
+# priorities:
+#   - name: critical
+#     match:
+#       - field: "severity"
+#         equals: "critical"
+#     bypass_all: true           # critical events always pass through
+#
+#   - name: normal
+#     default: true
+#
+# policies:
+#   - priority: critical
+#     decision: act_now
+#
+#   - priority: normal
+#     caps:
+#       # Allow only 1 event per source per 5 minutes — dedup window.
+#       - scope: subject
+#         period: 5m
+#         limit: 1
+#     decision_on_cap_breach: suppress
+#
+# callbacks:
+#   send_now:
+#     url:    "${RELAY_URL}"
+#     method: POST
+#   suppressed:
+#     url:           "${RELAY_URL}/dropped"
+#     method:        POST
+#     include_reason: true
+#
+# storage:
+#   backend: sqlite
+#   dsn:     /data/flowgate.db
+#
+# server:
+#   port: 7700
+#   auth:
+#     type:   none               # internal service — no auth needed

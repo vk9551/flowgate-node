@@ -1,0 +1,11 @@
+node_modules/
+dashboard/node_modules/
+dashboard/dist/
+dist/
+data/
+.git/
+.gitignore
+*.env
+.env*
+flowgate.yaml
+README.md
