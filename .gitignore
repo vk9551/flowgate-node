@@ -6,3 +6,6 @@ data/
 *.env
 .env*
 flowgate.yaml
+
+# Generated gRPC stubs — rebuilt by: make proto
+src/grpc/gen/

@@ -67,6 +67,7 @@ export interface DashCfg {
 
 export interface ServerCfg {
   port?: number;
+  grpc_port?: number;
   auth?: AuthCfg;
   dashboard?: DashCfg;
 }

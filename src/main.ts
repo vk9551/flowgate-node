@@ -6,6 +6,7 @@ import { SqliteStore } from './store/sqlite.js';
 import { FlowgateScheduler } from './scheduler/scheduler.js';
 import { FlowgateDispatcher } from './dispatcher/dispatcher.js';
 import { startServer } from './api/server.js';
+import { startGrpcServer } from './grpc/server.js';
 
 function parseArgs(): { configPath: string; port: number; dbPath: string } {
   const args = process.argv.slice(2);
@@ -50,10 +51,13 @@ async function main(): Promise<void> {
   });
   scheduler.start();
 
-  // Hot-reload: swap config on file change. The dispatcher picks it up automatically
-  // via the () => config closure.
+  // Shared configRef for gRPC (and optionally REST) hot-reload.
+  const configRef = { current: config };
+
+  // Hot-reload: swap config on file change.
   const watcher = watchConfig(configPath, (newCfg) => {
     config = newCfg;
+    configRef.current = newCfg;
     console.log('FlowGate: config reloaded');
   });
 
@@ -64,6 +68,12 @@ async function main(): Promise<void> {
 
   process.once('SIGINT',  () => { void shutdown(); });
   process.once('SIGTERM', () => { void shutdown(); });
+
+  // Start gRPC server if configured.
+  const grpcPort = config.server?.grpc_port ?? 0;
+  if (grpcPort > 0) {
+    await startGrpcServer(grpcPort, { configRef, configPath, store, startTime: Date.now() });
+  }
 
   await startServer({ configPath, config, store, scheduler }, port);
 }

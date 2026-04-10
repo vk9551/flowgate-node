@@ -1,4 +1,4 @@
-.PHONY: build build-dashboard dev test clean docker-build docker-up docker-down
+.PHONY: build build-dashboard dev test clean docker-build docker-up docker-down proto
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 build-dashboard:
@@ -28,6 +28,17 @@ docker-up:
 
 docker-down:
 	docker compose down
+
+# ── Proto codegen ─────────────────────────────────────────────────────────────
+proto:
+	mkdir -p src/grpc/gen
+	protoc \
+	  --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto \
+	  --ts_proto_out=src/grpc/gen \
+	  --ts_proto_opt=outputServices=grpc-js \
+	  --ts_proto_opt=esModuleInterop=true \
+	  -I proto \
+	  proto/flowgate.proto
 
 # ── Clean ─────────────────────────────────────────────────────────────────────
 clean:
